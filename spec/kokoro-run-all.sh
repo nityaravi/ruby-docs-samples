@@ -52,6 +52,9 @@ echo "Running tests in project $GOOGLE_CLOUD_PROJECT";
 trap "gimmeproj -project cloud-samples-ruby-test-kokoro done $GOOGLE_CLOUD_PROJECT" EXIT
 
 export FIRESTORE_PROJECT_ID=ruby-firestore
+export E2E_GOOGLE_CLOUD_PROJECT=cloud-samples-ruby-test-kokoro
+export MYSQL_DATABASE=${GOOGLE_CLOUD_PROJECT//-/_}
+export POSTGRES_DATABASE=${GOOGLE_CLOUD_PROJECT//-/_}
 
 # Use a project-specific bucket to avoid race conditions.
 export GOOGLE_CLOUD_STORAGE_BUCKET="$GOOGLE_CLOUD_PROJECT-cloud-samples-ruby-bucket"
@@ -110,12 +113,14 @@ if [[ $E2E = "true" ]]; then
 
   # Download Cloud SQL Proxy.
   wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
-  mv cloud_sql_proxy.linux.amd64 $HOME/cloud_sql_proxy
-  chmod +x $HOME/cloud_sql_proxy
+  mv cloud_sql_proxy.linux.amd64 /cloud_sql_proxy
+  chmod +x /cloud_sql_proxy
   mkdir /cloudsql && chmod 0777 /cloudsql
 
   # Start Cloud SQL Proxy.
-  $HOME/cloud_sql_proxy -dir=/cloudsql -credential_file=$GOOGLE_APPLICATION_CREDENTIALS &
+  /cloud_sql_proxy -dir=/cloudsql -credential_file=$GOOGLE_APPLICATION_CREDENTIALS &
+  export CLOUD_SQL_PROXY_PROCESS_ID=$!
+  trap "kill $CLOUD_SQL_PROXY_PROCESS_ID" EXIT
 fi
 
 # Capture failures
@@ -129,6 +134,9 @@ if [[ $RUN_ALL_TESTS = "1" ]]; then
   # leave this until all tests are added
   for PRODUCT in \
     appengine/analytics \
+    appengine/cloudsql \
+    appengine/cloudsql-mysql \
+    appengine/cloudsql-postgres \
     appengine/endpoints \
     auth \
     bigquery \
